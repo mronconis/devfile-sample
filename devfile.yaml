@@ -3,9 +3,10 @@ metadata:
   name: java-fuse
   namespace: developer-devspaces
 projects:
-  - name: fuse-rest-http-booster
-    zip:
-      location: 'http://devfile-registry.devspaces-demo.svc:8080/resources/v2/fuse-rest-http-booster.zip'
+  - name: fuse
+    git:
+      remotes: 
+        origin: "https://github.com/mronconis/fuse"
 components:
   - attributes:
       app.kubernetes.io/name: tools
