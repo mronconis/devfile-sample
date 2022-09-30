@@ -36,7 +36,7 @@ components:
           -Dsun.zip.disableMemoryMapping=true -Xms20m -Djava.security.egd=file:/dev/./urandom"
     memoryLimit: 512Mi
     endpoints:
-      - name: '8080/tcp'
+      - name: 'web'
         port: 8080
     mountSources: true
     volumes:
