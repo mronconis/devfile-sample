@@ -1,99 +1,104 @@
-schemaVersion: 2.1.0
+apiVersion: 1.0.0
 metadata:
-  name: java-fuse
-  namespace: developer-devspaces
+  name: eu-css-optiq-producer
+attributes:
+  mergePlugins: 'true'
 projects:
-  - name: fuse
-    git:
-      remotes: 
-        origin: "https://github.com/mronconis/fuse"
+  - name: fuse-rest-http-booster
+    zip:
+      location: 'http://devfile-registry.devspaces-demo.svc:8080/resources/v2/fuse-rest-http-booster.zip'
 components:
-  - attributes:
-      app.kubernetes.io/name: tools
-      che-theia.eclipse.org/vscode-extensions:
-        - 'relative:extension/resources/github_com/redhat-developer/devspaces-vscode-extensions/releases/download/7_44-che-assets/java-0.82.0-369.vsix'
-        - 'relative:extension/resources/github_com/fabric8-analytics/fabric8-analytics-vscode-extension/releases/download/0_2_1/fabric8-analytics-0.2.1.vsix'
-        - 'relative:extension/resources/github_com/redhat-developer/devspaces-vscode-extensions/releases/download/7_44-che-assets/vscode-java-debug-0.26.0.vsix'
-        - 'relative:extension/resources/open-vsx_org/api/vscjava/vscode-java-test/0_28_1/file/vscjava.vscode-java-test-0.28.1.vsix'
-      che-theia.eclipse.org/vscode-preferences:
-        java.server.launchMode: Standard
-    container:
-      args:
-        - sh
-        - '-c'
-        - '${PLUGIN_REMOTE_ENDPOINT_EXECUTABLE}'
-      endpoints:
-        - exposure: public
-          name: http-booster
-          protocol: http
-          targetPort: 8080
-        - exposure: internal
-          name: debug
-          protocol: http
-          targetPort: 5005
-      env:
-        - name: PLUGIN_REMOTE_ENDPOINT_EXECUTABLE
-          value: /remote-endpoint/plugin-remote-endpoint
-        - name: THEIA_PLUGINS
-          value: 'local-dir:///plugins/sidecars/tools'
-        - name: CHE_DASHBOARD_URL
-          value: 'https://devspaces.apps-crc.testing'
-        - name: CHE_PLUGIN_REGISTRY_URL
-          value: 'https://devspaces.apps-crc.testing/plugin-registry/v3'
-        - name: CHE_PLUGIN_REGISTRY_INTERNAL_URL
-          value: 'http://plugin-registry.devspaces-demo.svc:8080/v3'
-      image: 'registry.redhat.io/devspaces/udi-rhel8@sha256:d55549aad15742f6f7310da0c7abc1e65dd5d3ad2e3efb8fbf414cf91b9efac7'
-      memoryLimit: 3Gi
-      sourceMapping: /projects
-      volumeMounts:
-        - name: m2
-          path: /home/user/.m2
-        - name: remote-endpoint
-          path: /remote-endpoint
-        - name: plugins
-          path: /plugins
-    name: tools
-  - name: m2
-    volume:
-      size: 1G
+  - id: redhat/vscode-apache-camel/latest
+    type: chePlugin
+    preferences:
+     java.jdt.ls.vmargs: '-noverify -Xmx1G -XX:+UseG1GC -XX:+UseStringDeduplication -Dhttp.proxyHost=10.0.30.114 -Dhttp.proxyPort=8080 -Dhttps.proxyHost=10.0.30.114 -Dhttps.proxyPort=8080 -Dhttp.nonProxyHosts=10.10.30.186 -Dhttps.nonProxyHosts=10.10.30.186'
+
+  - id: eclipse/che-theia/latest
+    type: cheEditor
+    env:
+      - value: 'http://10.0.30.114:8080'
+        name: HTTP_PROXY
+      - value: 'http://10.0.30.114:8080'
+        name: HTTPS_PROXY
+
+  - id: redhat/vscode-xml/latest
+    type: chePlugin
+    env:
+      - value: 'http://10.0.30.114:8080'
+        name: HTTP_PROXY
+      - value: 'http://10.0.30.114:8080'
+        name: HTTPS_PROXY
+
+  - id: redhat/vscode-yaml/latest
+    type: chePlugin
+    alias: vscode-yaml
+    env:
+      - value: 'http://10.0.30.114:8080'
+        name: HTTP_PROXY
+      - value: 'http://10.0.30.114:8080'
+        name: HTTPS_PROXY
+
+  - id: redhat/java11/latest
+    type: chePlugin
+    env:
+      - value: 'http://10.0.30.114:8080'
+        name: HTTP_PROXY
+      - value: 'http://10.0.30.114:8080'
+        name: HTTPS_PROXY
+
+  - mountSources: true
+    endpoints:
+      - name: optiq-producer
+        port: 8080
+      - attributes:
+          public: 'false'
+        name: debug
+        port: 5005
+      - attributes:
+          public: 'false'
+        name: tests
+        port: 8081
+    memoryLimit: 4Gi
+    type: dockerimage
+    volumes:
+      - name: m2
+        containerPath: /projects/.m2
+    alias: maven
+    image: registry.redhat.io/devspaces/udi-rhel8
+    env:
+      - value: '-Dhttp.proxyHost=10.0.30.114 -Dhttp.proxyPort=8080 -Dhttps.proxyHost=10.0.30.114 -Dhttps.proxyPort=8080 -Dhttp.nonProxyHosts=10.10.30.186 -Dhttps.nonProxyHosts=10.10.30.186'
+        name: JAVA_OPTS
+      - value: $(JAVA_OPTS)
+        name: MAVEN_OPTS
+
+
 commands:
-  - exec:
-      commandLine: mvn clean package
-      component: tools
-      group:
-        kind: build
-      workingDir: '${PROJECTS_ROOT}/fuse-rest-http-booster'
-    id: 1-build
-  - exec:
-      commandLine: 'mvn spring-boot:run'
-      component: tools
-      group:
-        kind: run
-      workingDir: '${PROJECTS_ROOT}/fuse-rest-http-booster'
-    id: 2-run
-  - exec:
-      commandLine: 'mvn spring-boot:run -Dspring-boot.run.jvmArguments="-Xdebug -Xrunjdwp:transport=dt_socket,server=y,suspend=y,address=5005"'
-      component: tools
-      group:
-        kind: run
-      workingDir: '${PROJECTS_ROOT}/fuse-rest-http-booster'
-    id: 3-run-in-debug
-  - exec:
-      commandLine: |
-        echo
-        echo "Before you can deploy this application to an openshift cluster,"
-        echo "you must run 'oc login ...' in the tools terminal."
-        echo
-      component: tools
-      group:
-        kind: run
-      workingDir: '${PROJECTS_ROOT}/fuse-rest-http-booster'
-    id: 4-log-into-cluster
-  - exec:
-      commandLine: 'mvn oc:deploy -Popenshift -DskipTests'
-      component: tools
-      group:
-        kind: run
-      workingDir: '${PROJECTS_ROOT}/fuse-rest-http-booster'
-    id: 5-deploy-to-openshift
+  - name: Package Optiq Producer
+    actions:
+      - workdir: '${CHE_PROJECTS_ROOT}/optiq-producer'
+        type: exec
+        command: mvn package
+        component: maven
+  - name: Start Optiq Producer
+    actions:
+      - workdir: '${CHE_PROJECTS_ROOT}/optiq-producer'
+        type: exec
+        command: 'mvn compile quarkus:dev -Dquarkus.http.host=0.0.0.0 -Dquarkus.live-reload.instrumentation=false'
+        component: maven
+  - name: Debug optiq-producer
+    actions:
+      - referenceContent: |
+          {
+            "version": "0.2.0",
+            "configurations": [
+              {
+                "type": "java",
+                "request": "attach",
+                "name": "Debug optiq-producer",
+                "hostName": "localhost",
+                "port": 5005
+              }
+            ]
+          }
+        type: vscode-launch
 
